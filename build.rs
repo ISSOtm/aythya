@@ -36,7 +36,7 @@ fn main() {
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write SameBoy bindings");
 
-    slint_build::compile("src/main.slint").expect("Unable to compile Slint files");
+    slint_build::compile("ui/main.slint").expect("Unable to compile Slint files");
 
     assert!(
         Command::new("make")

@@ -1,0 +1,42 @@
+import { Button, LineEdit, ListView, Palette } from "std-widgets.slint";
+export component DebuggerWindow inherits Window {
+    title: @tr("Aythya — debugger");
+
+    VerticalLayout {
+        ListView {
+            for entry in log: Text {
+                text: entry.text;
+                color: entry.color;
+                wrap: word-wrap;
+            }
+
+            vertical-stretch: 1;
+        }
+
+        HorizontalLayout {
+            LineEdit {
+                text <=> command;
+                placeholder-text: @tr("Debugger command");
+                accepted => {
+                    submit();
+                }
+
+                horizontal-stretch: 1;
+            }
+
+            Button {
+                text: @tr("Submit");
+                clicked => {
+                    submit();
+                }
+            }
+        }
+    }
+
+    callback submit();
+    in-out property <string> command;
+    in-out property <[{color:brush,text:string}]> log;
+
+    out property <brush> out-color: Palette.foreground;
+    out property <brush> cmd-color: Palette.foreground.with-alpha(0.6);
+}

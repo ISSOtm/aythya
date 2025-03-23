@@ -1,4 +1,10 @@
+import { DebuggerWindow } from "debugger.slint";
+import { Palette } from "std-widgets.slint";
+export { DebuggerWindow }
+
 export component MainWindow inherits Window {
+    title: @tr("Aythya");
+
     MenuBar {
         Menu {
             title: @tr("File");
@@ -17,6 +23,17 @@ export component MainWindow inherits Window {
                 }
             }
         }
+
+        Menu {
+            title: @tr("Tools");
+
+            MenuItem {
+                title: @tr("Debugger");
+                activated => {
+                    show_debugger();
+                }
+            }
+        }
     }
 
     VerticalLayout {
@@ -29,6 +46,7 @@ export component MainWindow inherits Window {
 
     callback load();
     callback quit();
+    callback show_debugger();
 
-    in-out property <image> screen;
+    in property <image> screen;
 }
