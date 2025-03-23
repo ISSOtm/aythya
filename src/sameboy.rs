@@ -5,7 +5,10 @@
 // `bindgen` picks up on some libc functions. We don't use `u128`.
 #![allow(improper_ctypes)]
 
-use std::{mem::MaybeUninit, path::Path};
+use std::{
+    mem::{MaybeUninit, offset_of},
+    path::Path,
+};
 
 use slint::{SharedPixelBuffer, Weak};
 
@@ -20,6 +23,7 @@ pub struct SameBoy {
     main_window: Weak<MainWindow>,
 }
 
+/// Creation.
 impl SameBoy {
     pub fn new(main_window: Weak<MainWindow>) -> Self {
         let mut emu = MaybeUninit::uninit();
@@ -41,7 +45,6 @@ impl SameBoy {
         this
     }
 }
-
 impl Drop for SameBoy {
     fn drop(&mut self) {
         // SAFETY: this function is intended to dealloc the struct.
@@ -49,6 +52,7 @@ impl Drop for SameBoy {
     }
 }
 
+/// Callbacks.
 impl SameBoy {
     /// Resizes the internal framebuffer in accordance with the new screen width and height.
     fn resize_framebuffer(&mut self) {
@@ -64,30 +68,12 @@ impl SameBoy {
     extern "C" fn vblank_callback(gb: *mut GB_gameboy_t, kind: GB_vblank_type_t) {
         // TODO: schedule the buffer to be rendered (unless we shouldn't)
 
+        debug_assert_eq!(std::mem::offset_of!(SameBoy, gb), 0);
         // SAFETY: This callback is called from one of the `run` functions, which are all called
         //         while holding a `&mut`. No other references are live here.
         //         Also, the pointer is guaranteed to be non-NULL.
         let this = unsafe { (gb as *mut SameBoy).as_mut().unwrap_unchecked() };
-        // It's fine if we fail to update this due to the main loop being closed; we'll shut down soon anyway.
-        let _ = slint::invoke_from_event_loop({
-            let main_window = &this.main_window;
-            let framebuffer = &this.framebuffer;
-            // SAFETY: the instance is properly initialised.
-            let width = unsafe { GB_get_screen_width(&mut this.gb) };
-            // SAFETY: ditto.
-            let height = unsafe { GB_get_screen_height(&mut this.gb) };
-            move || {
-                if let Some(main_window) = main_window.upgrade() {
-                    main_window.set_screen(slint::Image::from_rgba8(
-                        SharedPixelBuffer::clone_from_slice(
-                            bytemuck::cast_slice(framebuffer),
-                            width,
-                            height,
-                        ),
-                    ));
-                }
-            }
-        });
+        this.update_screen();
     }
 
     extern "C" fn rgb_encode_callback(_gb: *mut GB_gameboy_t, r: u8, g: u8, b: u8) -> u32 {
@@ -121,7 +107,7 @@ impl SameBoy {
                 GB_load_boot_rom_from_buffer(gb, SGB2_BOOT_ROM.as_ptr(), SGB2_BOOT_ROM.len())
             },
             // SAFETY: Ditto.
-            GB_boot_rom_t_GB_BOOT_ROM_CGB0 => unsafe {
+            GB_boot_rom_t_GB_BOOT_ROM_CGB_0 => unsafe {
                 GB_load_boot_rom_from_buffer(gb, CGB0_BOOT_ROM.as_ptr(), CGB0_BOOT_ROM.len())
             },
             // SAFETY: Ditto.
@@ -132,22 +118,7 @@ impl SameBoy {
             GB_boot_rom_t_GB_BOOT_ROM_AGB => unsafe {
                 GB_load_boot_rom_from_buffer(gb, AGB_BOOT_ROM.as_ptr(), AGB_BOOT_ROM.len())
             },
-        }
-    }
-}
-
-impl SameBoy {
-    pub fn run_once(&mut self) {
-        // SAFETY: `gb` is initialised, and not running (we couldn't have a mutable ref to it otherwise).
-        unsafe { GB_run(&mut self.gb) };
-    }
-
-    pub fn step(&mut self) {
-        // SAFETY: `gb` is initialised, and not running (we couldn't have a mutable ref to it otherwise).
-        unsafe {
-            GB_set_turbo_mode(&mut self.gb, true, true);
-            let _ = GB_run(&mut self.gb);
-            GB_set_turbo_mode(&mut self.gb, false, true);
+            _ => unreachable!(),
         }
     }
 }
@@ -161,7 +132,24 @@ pub enum Schedule {
 
     Quit,
 }
+/// Execution.
+impl SameBoy {
+    pub fn run_once(&mut self) {
+        // SAFETY: `gb` is initialised, and not running (we couldn't have a mutable ref to it otherwise).
+        unsafe { GB_run(&mut self.gb) };
+    }
 
+    pub fn step(&mut self) {
+        // SAFETY: `gb` is initialised, and not running (we couldn't have a mutable ref to it otherwise).
+        unsafe {
+            GB_set_turbo_mode(&mut self.gb, true, true); // Disable timekeeping.
+            let _ = GB_run(&mut self.gb);
+            GB_set_turbo_mode(&mut self.gb, false, true);
+        }
+    }
+}
+
+/// Resetting.
 impl SameBoy {
     pub fn change_model(&mut self, model: GB_model_t) {
         // SAFETY: the instance is initialised by `new`, and not running thanks to the mutable reference.
@@ -187,5 +175,30 @@ impl SameBoy {
             }
             None => todo!(), // Report error
         }
+    }
+}
+
+/// Rendering.
+impl SameBoy {
+    fn update_screen(&mut self) {
+        let framebuffer = &self.framebuffer;
+        // SAFETY: the instance is properly initialised.
+        let width = unsafe { GB_get_screen_width(&mut self.gb) };
+        // SAFETY: ditto.
+        let height = unsafe { GB_get_screen_height(&mut self.gb) };
+        let pixbuf =
+            SharedPixelBuffer::clone_from_slice(bytemuck::cast_slice(framebuffer), width, height);
+        let main_window = self.main_window.clone();
+        // It's fine if we fail to update this due to the main loop being closed; we'll shut down soon anyway.
+        let _ = slint::invoke_from_event_loop(move || {
+            if let Some(main_window) = main_window.upgrade() {
+                main_window.set_screen(slint::Image::from_rgba8(pixbuf));
+            }
+        });
+    }
+
+    pub fn render_everything(&mut self) {
+        self.update_screen();
+        // TODO: tilemap, etc.
     }
 }
