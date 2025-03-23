@@ -1,0 +1,17 @@
+[package]
+name = "aythya"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bytemuck = "1.22.0"
+cpal = "0.15.3"
+rfd = "0.15.3"
+rgb = "0.8.50"
+rusqlite = "0.34.0"
+slint = "1.10.0"
+
+[build-dependencies]
+cc = { version = "1.2.16", features = ["parallel", "jobserver"] }
+bindgen = "0.71.1"
+slint-build = "1.10.0"

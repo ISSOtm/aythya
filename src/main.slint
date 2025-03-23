@@ -1,0 +1,34 @@
+export component MainWindow inherits Window {
+    MenuBar {
+        Menu {
+            title: @tr("File");
+
+            MenuItem {
+                title: @tr("Load");
+                activated => {
+                    load();
+                }
+            }
+
+            MenuItem {
+                title: @tr("Quit");
+                activated => {
+                    quit();
+                }
+            }
+        }
+    }
+
+    VerticalLayout {
+        Image {
+            source: screen;
+            image-fit: contain;
+            image-rendering: pixelated;
+        }
+    }
+
+    callback load();
+    callback quit();
+
+    in-out property <image> screen;
+}
