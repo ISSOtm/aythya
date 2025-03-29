@@ -10,10 +10,11 @@ use std::{
     },
 };
 
+use slint::{Model, SharedString, VecModel};
+
 slint::include_modules!();
 mod sameboy;
 use sameboy::{DebuggerCmdStr, SameBoy, Schedule};
-use slint::{Model, SharedString, VecModel};
 
 fn main() {
     let main_window = MainWindow::new().expect("Unable to create main window");
@@ -127,7 +128,7 @@ fn emu_thread_func(sameboy: &Arc<Mutex<SameBoy>>, receiver: Receiver<Schedule>) 
                 }
                 Schedule::RunFrame => {
                     let mut sameboy = sameboy.lock().unwrap();
-                    todo!();
+                    sameboy.run_frame();
                 }
 
                 Schedule::Quit => return,

@@ -229,6 +229,11 @@ impl SameBoy {
             GB_set_turbo_mode(&mut self.gb, false, true);
         }
     }
+
+    pub fn run_frame(&mut self) {
+        // SAFETY: `gb` is initialised, and not running (we couldn't have a mutable ref to it otherwise).
+        unsafe { GB_run_frame(&mut self.gb) };
+    }
 }
 
 /// Resetting.
