@@ -12,6 +12,6 @@ rusqlite = "0.34.0"
 slint = "1.10.0"
 
 [build-dependencies]
-cc = { version = "1.2.16", features = ["parallel", "jobserver"] }
+cc = { version = "1.2.17", features = ["parallel", "jobserver"] }
 bindgen = "0.71.1"
 slint-build = "1.10.0"
